@@ -49,7 +49,22 @@ def create_app() -> FastAPI:
     app.include_router(action_items_router, prefix=prefix)
     app.include_router(search_router, prefix=prefix)
 
-    @app.get("/health")
+    @app.get("/")
+    async def root():
+        return {
+            "service": "Fireflies Clone API",
+            "version": "1.0.0",
+            "status": "running",
+            "docs": "/docs",
+            "api_base": "/api/v1",
+            "endpoints": {
+                "meetings": "/api/v1/meetings",
+                "search": "/api/v1/search",
+                "health": "/api/v1/health",
+            },
+        }
+
+    @app.get("/api/v1/health")
     async def health_check():
         return {"status": "ok", "service": "fireflies-clone-api"}
 

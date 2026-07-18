@@ -34,9 +34,10 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
 // Meetings
 // ---------------------------------------------------------------------------
 export const meetingsApi = {
-  list: (params?: { search?: string; page?: number; page_size?: number }) => {
+  list: (params?: { search?: string; topic?: string; page?: number; page_size?: number }) => {
     const qs = new URLSearchParams();
     if (params?.search) qs.set('search', params.search);
+    if (params?.topic) qs.set('topic', params.topic);
     if (params?.page) qs.set('page', String(params.page));
     if (params?.page_size) qs.set('page_size', String(params.page_size));
     return request<MeetingListResponse>(`/meetings?${qs}`);

@@ -14,6 +14,7 @@ import {
   BarChart2,
 } from 'lucide-react';
 import { getInitials } from '@/lib/utils';
+import toast from 'react-hot-toast';
 
 const NAV_ITEMS = [
   { href: '/meetings', icon: BookOpen, label: 'Notebook' },
@@ -72,7 +73,7 @@ export default function Sidebar() {
             <button
               key={item.label}
               className="sidebar-item"
-              onClick={() => alert(`${item.label} — Coming Soon`)}
+              onClick={() => toast(`${item.label} — Coming Soon`, { icon: '🚧' })}
             >
               <Icon size={16} className="sidebar-item-icon" />
               <span>{item.label}</span>

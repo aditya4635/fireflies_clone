@@ -188,6 +188,7 @@ export default function MeetingDetailPage({ params }: PageProps) {
                   currentTime={currentTime}
                   onSeek={handleSeek}
                   onTimeUpdate={setCurrentTime}
+                  transcript={transcript}
                 />
 
                 {summaryLoading ? (

@@ -3,59 +3,105 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { Play, Pause, SkipBack, SkipForward, Volume2 } from 'lucide-react';
 import { formatTimestamp } from '@/lib/utils';
+import { TranscriptLine } from '@/types';
 
 interface MediaPlayerProps {
   duration: number;
   currentTime: number;
   onSeek: (time: number) => void;
   onTimeUpdate?: (time: number) => void;
+  transcript?: TranscriptLine[];
 }
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 const BAR_COUNT = 60;
 
-export default function MediaPlayer({ duration, currentTime, onSeek, onTimeUpdate }: MediaPlayerProps) {
+export default function MediaPlayer({ duration, currentTime, onSeek, onTimeUpdate, transcript }: MediaPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [speed, setSpeed] = useState(1);
   const [internalTime, setInternalTime] = useState(currentTime);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [currentLineId, setCurrentLineId] = useState<string | null>(null);
 
   // Sync external seeks into internal state
   useEffect(() => {
     setInternalTime(currentTime);
   }, [currentTime]);
 
-  // Fake playback timer
+  // Fake playback timer OR TTS sync
   useEffect(() => {
     if (isPlaying) {
-      intervalRef.current = setInterval(() => {
-        setInternalTime((prev) => {
-          const next = Math.min(prev + 0.25 * speed, duration);
-          onTimeUpdate?.(next);
-          if (next >= duration) {
-            setIsPlaying(false);
-          }
-          return next;
-        });
-      }, 250);
+      if (transcript && transcript.length > 0) {
+        // TTS Mode
+        const line = transcript.find(l => internalTime >= l.start_time && internalTime < l.end_time) 
+                  || transcript.find(l => l.start_time >= internalTime);
+
+        if (line && line.id !== currentLineId) {
+          window.speechSynthesis.cancel();
+          setCurrentLineId(line.id);
+          const utterance = new SpeechSynthesisUtterance(line.text);
+          utterance.rate = speed;
+          
+          utterance.onend = () => {
+            if (isPlaying) {
+              setInternalTime(line.end_time);
+              onTimeUpdate?.(line.end_time);
+              setCurrentLineId(null); // Force next line to trigger
+            }
+          };
+
+          window.speechSynthesis.speak(utterance);
+        } else if (!line) {
+          setIsPlaying(false);
+        }
+      } else {
+        // Fallback Fake Timer Mode
+        intervalRef.current = setInterval(() => {
+          setInternalTime((prev) => {
+            const next = Math.min(prev + 0.25 * speed, duration);
+            onTimeUpdate?.(next);
+            if (next >= duration) {
+              setIsPlaying(false);
+            }
+            return next;
+          });
+        }, 250);
+      }
     } else {
       if (intervalRef.current) clearInterval(intervalRef.current);
+      if (transcript) {
+        window.speechSynthesis.cancel();
+        setCurrentLineId(null);
+      }
     }
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [isPlaying, speed, duration, onTimeUpdate]);
+  }, [isPlaying, speed, duration, onTimeUpdate, transcript, internalTime, currentLineId]);
+
+  // Clean up speech synthesis on unmount
+  useEffect(() => {
+    return () => {
+      window.speechSynthesis.cancel();
+    };
+  }, []);
 
   const handleSeekBar = (e: React.ChangeEvent<HTMLInputElement>) => {
     const t = parseFloat(e.target.value);
     setInternalTime(t);
     onSeek(t);
+    if (isPlaying && transcript) {
+      setCurrentLineId(null); // Reset to find new line
+    }
   };
 
   const skip = (delta: number) => {
     const t = Math.max(0, Math.min(internalTime + delta, duration));
     setInternalTime(t);
     onSeek(t);
+    if (isPlaying && transcript) {
+      setCurrentLineId(null);
+    }
   };
 
   const cycleSpeed = () => {
@@ -72,9 +118,15 @@ export default function MediaPlayer({ duration, currentTime, onSeek, onTimeUpdat
         <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)', fontFamily: 'var(--font-heading)' }}>
           Audio Player
         </span>
-        <span className="badge badge-purple" style={{ marginLeft: 'auto' }}>
-          Preview
-        </span>
+        {transcript ? (
+          <span className="badge badge-purple" style={{ marginLeft: 'auto' }}>
+            TTS Active
+          </span>
+        ) : (
+          <span className="badge badge-purple" style={{ marginLeft: 'auto' }}>
+            Preview
+          </span>
+        )}
       </div>
 
       {/* Waveform visualizer */}

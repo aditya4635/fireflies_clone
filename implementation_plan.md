@@ -457,3 +457,37 @@ Example meetings:
 - Test action item CRUD (add, complete, delete)
 - Test meeting CRUD (create with form, edit, delete)
 - Verify responsive layout at 1280px, 1440px, mobile
+
+---
+
+## 13. Bonus Features Implementation Plan
+
+### User Review Required
+> [!IMPORTANT]
+> The text-to-speech simulation will use the browser's built-in `window.speechSynthesis` API. It won't sound as natural as a real AI voice model, and syncing perfectly with the fake timer can be slightly imprecise, but it will successfully let you "hear" the transcript read out loud as requested.
+> 
+> For the **AskFred** LLM chat, since we do not have an active OpenAI/Anthropic API key configured in this environment, I will implement a **simulated frontend chat interface** that uses a mock delay and returns intelligent-sounding boilerplate responses. This demonstrates the UI/UX perfectly for the assignment without requiring paid API keys.
+
+### Proposed Changes
+
+#### Frontend
+
+##### [MODIFY] `frontend/src/app/meetings/[id]/page.tsx`
+- Pass the `transcript` data as a prop to the `MediaPlayer` component so it knows what to say and when.
+
+##### [MODIFY] `frontend/src/components/player/MediaPlayer.tsx`
+- Integrate `window.speechSynthesis`.
+- Instead of just a fake timer, the player will find the transcript line corresponding to the current time and speak it.
+- When an utterance finishes, it will automatically advance the timer to the next line and speak it, keeping the visual progress bar roughly in sync with the audio.
+
+##### [NEW] `frontend/src/app/askfred/page.tsx`
+- Create the main page for the AskFred chat interface.
+- Implement a split-pane layout (sidebar + chat window).
+
+##### [NEW] `frontend/src/components/askfred/ChatInterface.tsx`
+- A reusable chat component with a message list, user input, and simulated typing indicators.
+- Mock "LLM" logic that generates responses based on simple keywords (e.g., if the user asks about "summary", it replies with a mock summary).
+
+### Verification Plan
+- **TTS**: Open a meeting, click play on the audio player, and verify the browser reads the transcript out loud while the progress bar advances.
+- **AskFred**: Navigate to the AskFred tab, type a message, and verify the simulated AI responds correctly with a typing animation.

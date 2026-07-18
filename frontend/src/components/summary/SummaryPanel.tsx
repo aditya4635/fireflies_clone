@@ -46,7 +46,7 @@ export default function SummaryPanel({ summary, onSeek }: SummaryPanelProps) {
   const sentimentClass = `sentiment-${summary.sentiment}`;
 
   return (
-    <div className="summary-panel">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
       {/* Overview */}
       <Section title="Overview" icon={Lightbulb}>
         <p className="summary-overview">{summary.overview}</p>

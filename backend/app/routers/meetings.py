@@ -15,12 +15,13 @@ router = APIRouter(prefix="/meetings", tags=["meetings"])
 @router.get("", response_model=MeetingListResponse)
 async def list_meetings(
     search: Optional[str] = Query(None, description="Search by title or participant"),
+    topic: Optional[str] = Query(None, description="Filter by topic"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
 ):
     service = MeetingService(db)
-    return await service.list_meetings(search=search, page=page, page_size=page_size)
+    return await service.list_meetings(search=search, topic=topic, page=page, page_size=page_size)
 
 
 @router.post("", response_model=MeetingResponse, status_code=201)

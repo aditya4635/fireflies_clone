@@ -31,10 +31,11 @@ class MeetingRepository(BaseRepository[Meeting]):
     async def list_with_filters(
         self,
         search: Optional[str] = None,
+        topic: Optional[str] = None,
         page: int = 1,
         page_size: int = 20,
     ) -> Tuple[List[Meeting], int]:
-        """Return paginated meetings filtered by optional search query."""
+        """Return paginated meetings filtered by optional search query and topic."""
         base_query = select(Meeting).options(selectinload(Meeting.participants))
 
         if search:
@@ -42,6 +43,12 @@ class MeetingRepository(BaseRepository[Meeting]):
                 or_(
                     Meeting.title.ilike(f"%{search}%"),
                 )
+            )
+
+        if topic:
+            from app.models.summary import Summary
+            base_query = base_query.join(Meeting.summary).where(
+                Summary.key_topics.ilike(f'%"{topic}"%')
             )
 
         # Total count

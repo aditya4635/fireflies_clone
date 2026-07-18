@@ -20,9 +20,9 @@ class MeetingService:
         self.repo = MeetingRepository(db)
 
     async def list_meetings(
-        self, search: Optional[str], page: int, page_size: int
+        self, search: Optional[str], topic: Optional[str], page: int, page_size: int
     ) -> MeetingListResponse:
-        items, total = await self.repo.list_with_filters(search=search, page=page, page_size=page_size)
+        items, total = await self.repo.list_with_filters(search=search, topic=topic, page=page, page_size=page_size)
         return MeetingListResponse(
             items=[MeetingResponse.model_validate(m) for m in items],
             total=total,

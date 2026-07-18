@@ -13,6 +13,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 
 export default function MeetingsPage() {
   const [searchInput, setSearchInput] = useState('');
+  const [topicFilter, setTopicFilter] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editMeeting, setEditMeeting] = useState<Meeting | null>(null);
   const [page, setPage] = useState(1);
@@ -20,9 +21,9 @@ export default function MeetingsPage() {
   const debouncedSearch = useDebounce(searchInput, 300);
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['meetings', debouncedSearch, page],
+    queryKey: ['meetings', debouncedSearch, topicFilter, page],
     queryFn: () =>
-      meetingsApi.list({ search: debouncedSearch || undefined, page, page_size: 20 }),
+      meetingsApi.list({ search: debouncedSearch || undefined, topic: topicFilter || undefined, page, page_size: 20 }),
   });
 
   const handleEdit = useCallback((meeting: Meeting) => {
@@ -42,6 +43,8 @@ export default function MeetingsPage() {
 
   const meetings = data?.items ?? [];
   const total = data?.total ?? 0;
+
+  const TOPICS = ['Engineering', 'Design', 'Sales', 'Product', 'Marketing', 'Support', 'Planning'];
 
   return (
     <div className="app-shell">
@@ -79,10 +82,25 @@ export default function MeetingsPage() {
                 aria-label="Search meetings"
               />
             </div>
-            <button className="btn btn-secondary btn-sm">
-              <SlidersHorizontal size={14} />
-              Filters
-            </button>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <SlidersHorizontal size={14} style={{ color: 'var(--text-muted)' }} />
+              <select
+                className="form-input"
+                style={{ padding: '6px 12px', height: '32px', width: 'auto', fontSize: '13px', color: 'var(--text-primary)', backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}
+                value={topicFilter}
+                onChange={(e) => {
+                  setTopicFilter(e.target.value);
+                  setPage(1);
+                }}
+                aria-label="Filter by topic"
+              >
+                <option value="">All Topics</option>
+                {TOPICS.map(t => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {/* Content */}
