@@ -17,7 +17,7 @@ class MeetingRepository(BaseRepository[Meeting]):
     async def get_by_id_full(self, meeting_id: str) -> Optional[Meeting]:
         """Fetch meeting with all relationships eagerly loaded."""
         stmt = (
-            select(Meeting)
+            self._base_select()
             .where(Meeting.id == meeting_id)
             .options(
                 selectinload(Meeting.participants),
@@ -36,7 +36,7 @@ class MeetingRepository(BaseRepository[Meeting]):
         page_size: int = 20,
     ) -> Tuple[List[Meeting], int]:
         """Return paginated meetings filtered by optional search query and topic."""
-        base_query = select(Meeting).options(selectinload(Meeting.participants))
+        base_query = self._base_select().options(selectinload(Meeting.participants))
 
         if search:
             base_query = base_query.where(
@@ -46,9 +46,9 @@ class MeetingRepository(BaseRepository[Meeting]):
             )
 
         if topic:
-            from app.models.summary import Summary
-            base_query = base_query.join(Meeting.summary).where(
-                Summary.key_topics.ilike(f'%"{topic}"%')
+            from app.models.topic import Topic
+            base_query = base_query.join(Meeting.summary).join(Summary.topics).where(
+                Topic.name.ilike(f"%{topic}%")
             )
 
         # Total count

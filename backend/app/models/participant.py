@@ -6,10 +6,11 @@ import uuid
 from sqlalchemy import String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
+from app.models.base import AuditableBase
 from app.models.meeting import meeting_participants_table
 
 
-class Participant(Base):
+class Participant(Base, AuditableBase):
     """A meeting participant (speaker)."""
 
     __tablename__ = "participants"

@@ -2,7 +2,7 @@
 from __future__ import annotations
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, model_validator
 
 
 class ActionItemCreate(BaseModel):
@@ -32,3 +32,10 @@ class ActionItemResponse(BaseModel):
     priority: str
     created_at: datetime
     updated_at: datetime
+
+    @model_validator(mode="before")
+    @classmethod
+    def handle_enums(cls, data):
+        if hasattr(data, "priority") and hasattr(data.priority, "value"):
+            data.priority = data.priority.value
+        return data

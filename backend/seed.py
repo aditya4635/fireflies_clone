@@ -346,26 +346,36 @@ async def seed(session: AsyncSession) -> None:
     from sqlalchemy import text
 
     # Drop and recreate all tables for a clean seed
+    await session.execute(text("DELETE FROM summary_topics"))
+    await session.execute(text("DELETE FROM topics"))
+    await session.execute(text("DELETE FROM chapters"))
     await session.execute(text("DELETE FROM action_items"))
     await session.execute(text("DELETE FROM summaries"))
     await session.execute(text("DELETE FROM transcript_lines"))
     await session.execute(text("DELETE FROM meeting_participants"))
     await session.execute(text("DELETE FROM meetings"))
     await session.execute(text("DELETE FROM participants"))
+    await session.execute(text("DELETE FROM workspaces"))
     await session.commit()
 
     all_participants: dict = {}
 
+    from app.models.workspace import Workspace
+    workspace = Workspace(id="ws_default", name="Acme Corp")
+    session.add(workspace)
+    await session.flush()
+
     for meeting_data in MEETINGS:
         # Create meeting
-        from app.models.meeting import Meeting
+        from app.models.meeting import Meeting, MeetingStatus
         meeting = Meeting(
             id=meeting_data["id"],
+            workspace_id="ws_default",
             title=meeting_data["title"],
             date=meeting_data["date"],
             duration=meeting_data["duration"],
             bot_name=meeting_data["bot_name"],
-            status=meeting_data["status"],
+            status=MeetingStatus(meeting_data["status"]) if meeting_data["status"] == "failed" else MeetingStatus.COMPLETED,
             source=meeting_data["source"],
         )
         session.add(meeting)
@@ -397,6 +407,7 @@ async def seed(session: AsyncSession) -> None:
         for seq, (speaker, start, end, text) in enumerate(meeting_data["transcript"]):
             tl = TranscriptLine(
                 id=str(uuid.uuid4()),
+                workspace_id="ws_default",
                 meeting_id=meeting.id,
                 speaker_name=speaker,
                 start_time=start,
@@ -407,27 +418,60 @@ async def seed(session: AsyncSession) -> None:
             session.add(tl)
 
         # Create summary
-        from app.models.summary import Summary
+        from app.models.summary import Summary, SentimentEnum
+        from app.models.chapter import Chapter
+        from app.models.topic import Topic
+        
         s_data = meeting_data["summary"]
         summary = Summary(
             id=str(uuid.uuid4()),
+            workspace_id="ws_default",
             meeting_id=meeting.id,
             overview=s_data["overview"],
-            key_topics=json.dumps(s_data["key_topics"]),
-            chapters=json.dumps(s_data["chapters"]),
-            sentiment=s_data["sentiment"],
+            sentiment=SentimentEnum(s_data["sentiment"]) if s_data.get("sentiment") else SentimentEnum.NEUTRAL,
         )
         session.add(summary)
+        await session.flush()
+        
+        for ch_data in s_data["chapters"]:
+            ch = Chapter(
+                id=str(uuid.uuid4()),
+                workspace_id="ws_default",
+                summary_id=summary.id,
+                title=ch_data["title"],
+                start_time=ch_data["start_time"],
+                summary_text=ch_data["summary"],
+            )
+            session.add(ch)
+            
+        for topic_name in s_data["key_topics"]:
+            # Check if topic exists to avoid duplicates
+            from sqlalchemy import select
+            stmt = select(Topic).where(Topic.name == topic_name)
+            res = await session.execute(stmt)
+            topic = res.scalar_one_or_none()
+            if not topic:
+                topic = Topic(id=str(uuid.uuid4()), workspace_id="ws_default", name=topic_name)
+                session.add(topic)
+                await session.flush()
+                
+            from app.models.topic import summary_topics_table
+            await session.execute(
+                summary_topics_table.insert().values(
+                    summary_id=summary.id, topic_id=topic.id
+                )
+            )
 
         # Create action items
-        from app.models.action_item import ActionItem
+        from app.models.action_item import ActionItem, ActionItemPriority
         for ai_data in meeting_data["action_items"]:
             ai = ActionItem(
                 id=str(uuid.uuid4()),
+                workspace_id="ws_default",
                 meeting_id=meeting.id,
                 text=ai_data["text"],
                 assignee=ai_data["assignee"],
-                priority=ai_data["priority"],
+                priority=ActionItemPriority(ai_data["priority"]),
                 completed=ai_data["completed"],
             )
             session.add(ai)

@@ -5,7 +5,7 @@ Separates API contract from ORM models (Dependency Inversion Principle).
 from __future__ import annotations
 from datetime import datetime
 from typing import List, Optional
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 
 # ---------------------------------------------------------------------------
@@ -64,6 +64,13 @@ class MeetingResponse(BaseModel):
     @classmethod
     def ensure_datetime(cls, v):
         return v
+
+    @model_validator(mode="before")
+    @classmethod
+    def handle_enums(cls, data):
+        if hasattr(data, "status") and hasattr(data.status, "value"):
+            data.status = data.status.value
+        return data
 
 
 class MeetingListResponse(BaseModel):

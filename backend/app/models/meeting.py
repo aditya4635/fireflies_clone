@@ -3,10 +3,12 @@ Meeting ORM model.
 Represents a recorded/imported meeting session.
 """
 import uuid
+import enum
 from datetime import datetime
-from sqlalchemy import String, Integer, DateTime, ForeignKey, Table, Column, func
+from sqlalchemy import String, Integer, DateTime, ForeignKey, Table, Column, func, Enum, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
+from app.models.base import AuditableBase
 
 
 # Association table for Meeting ↔ Participant many-to-many
@@ -18,7 +20,15 @@ meeting_participants_table = Table(
 )
 
 
-class Meeting(Base):
+class MeetingStatus(str, enum.Enum):
+    UPLOADING = "uploading"
+    TRANSCRIBING = "transcribing"
+    SUMMARIZING = "summarizing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+class Meeting(Base, AuditableBase):
     """Core entity representing a single meeting session."""
 
     __tablename__ = "meetings"
@@ -26,20 +36,22 @@ class Meeting(Base):
     id: Mapped[str] = mapped_column(
         String, primary_key=True, default=lambda: str(uuid.uuid4())
     )
+    workspace_id: Mapped[str] = mapped_column(
+        String, ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     date: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     duration: Mapped[int] = mapped_column(Integer, nullable=False)  # seconds
     bot_name: Mapped[str] = mapped_column(String(100), default="Fred")
-    status: Mapped[str] = mapped_column(String(50), default="processed")
+    status: Mapped[MeetingStatus] = mapped_column(
+        Enum(MeetingStatus, name="meeting_status_enum"), default=MeetingStatus.COMPLETED
+    )
     source: Mapped[str] = mapped_column(String(50), default="upload")
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, server_default=func.now()
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime, server_default=func.now(), onupdate=func.now()
-    )
 
     # Relationships
+    workspace: Mapped["Workspace"] = relationship(  # type: ignore[name-defined]  # noqa: F821
+        "Workspace", back_populates="meetings"
+    )
     transcript_lines: Mapped[list["TranscriptLine"]] = relationship(  # type: ignore[name-defined]  # noqa: F821
         "TranscriptLine",
         back_populates="meeting",
@@ -62,4 +74,8 @@ class Meeting(Base):
         secondary=meeting_participants_table,
         back_populates="meetings",
         lazy="selectin",
+    )
+
+    __table_args__ = (
+        Index("idx_workspace_date", "workspace_id", "date"),
     )

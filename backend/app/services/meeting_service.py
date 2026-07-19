@@ -39,6 +39,7 @@ class MeetingService:
     async def create_meeting(self, data: MeetingCreate) -> Meeting:
         meeting = Meeting(
             id=str(uuid.uuid4()),
+            workspace_id="ws_default",
             title=data.title,
             date=data.date,
             duration=data.duration,
