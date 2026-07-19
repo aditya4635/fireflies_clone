@@ -91,12 +91,24 @@ assignment_scaler/
 
 ## 🗄️ Database Schema
 
-```
-meetings ──< meeting_participants >── participants
+```text
+workspaces
     │
-    ├──< transcript_lines
-    ├──  summaries (1:1)
-    └──< action_items
+    ├──< meetings ──< meeting_participants >── participants
+    │       │
+    │       ├──< transcript_lines
+    │       ├──  summaries (1:1)
+    │       │      │
+    │       │      ├──< chapters
+    │       │      └──< summary_topics >── topics
+    │       │
+    │       └──< action_items
+    │
+    ├──< topics (also linked to workspaces directly)
+    ├──< transcript_lines (linked to workspaces)
+    ├──< summaries (linked to workspaces)
+    ├──< chapters (linked to workspaces)
+    └──< action_items (linked to workspaces)
 ```
 
 ---

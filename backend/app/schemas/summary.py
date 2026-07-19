@@ -26,22 +26,40 @@ class SummaryResponse(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def map_orm_relations(cls, data: Any) -> Any:
-        # If it's an ORM object, extract relationships to match the old JSON shape
+        if isinstance(data, dict):
+            return data
+            
+        # If it's an ORM object, extract into a dict
+        res = {
+            "id": getattr(data, "id", None),
+            "meeting_id": getattr(data, "meeting_id", None),
+            "overview": getattr(data, "overview", None),
+            "created_at": getattr(data, "created_at", None),
+            "updated_at": getattr(data, "updated_at", None),
+        }
+        
+        if hasattr(data, "sentiment") and hasattr(data.sentiment, "value"):
+            res["sentiment"] = data.sentiment.value
+        else:
+            res["sentiment"] = getattr(data, "sentiment", None)
+
         if hasattr(data, "topics"):
-            data.key_topics = [t.name for t in data.topics] if data.topics else []
+            res["key_topics"] = [t.name for t in data.topics] if data.topics else []
+        else:
+            res["key_topics"] = getattr(data, "key_topics", [])
+
         if hasattr(data, "chapters") and hasattr(data.chapters, "__iter__"):
-            # Map ORM 'summary_text' to 'summary' for the frontend API
-            data.chapters_mapped = []
+            mapped = []
             for ch in data.chapters:
                 if hasattr(ch, "summary_text"):
-                     data.chapters_mapped.append({"title": ch.title, "start_time": ch.start_time, "summary": ch.summary_text})
-            data.chapters = data.chapters_mapped
-        
-        # Handle enum conversion
-        if hasattr(data, "sentiment") and hasattr(data.sentiment, "value"):
-            data.sentiment = data.sentiment.value
+                    mapped.append({"title": ch.title, "start_time": ch.start_time, "summary": ch.summary_text})
+                else:
+                    mapped.append(ch)
+            res["chapters"] = mapped
+        else:
+            res["chapters"] = getattr(data, "chapters", [])
 
-        return data
+        return res
 
 
 class SummaryUpdate(BaseModel):
